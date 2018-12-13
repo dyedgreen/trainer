@@ -1,19 +1,17 @@
 # Build Go App
 FROM golang:1.11.2-alpine as build
 
-WORKDIR /go/src/server
-COPY ./server .
+WORKDIR /go/src/trainer
+COPY ./internal ./internal
 
-RUN go install .
+RUN go install ./internal
 
 # Run environment
 FROM alpine
 
 WORKDIR /app
-COPY --from=build /go/bin/server ./server
+COPY --from=build /go/bin/internal ./app
+COPY ./web ./web
 
-# Expose ports
 EXPOSE 80
-
-# Run app
-ENTRYPOINT ["./server"]
+ENTRYPOINT ["./app"]

@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  server:
+    build: .
+    volumes:
+      - data:/app/data
+    ports:
+      - 80:80
+
+volumes:
+  data:
