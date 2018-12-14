@@ -57,9 +57,10 @@ var templ = template.Must(template.ParseFiles(templateRoot + "/error.html"))
 // Server
 
 type Server struct {
-	server http.Server
-	mux    *http.ServeMux
-	auth   Auth
+	server  http.Server
+	mux     *http.ServeMux
+	protMux *http.ServeMux
+	auth    Auth
 }
 
 func New(addr string) *Server {
@@ -67,7 +68,9 @@ func New(addr string) *Server {
 	s.server.Addr = addr
 	s.mux = http.NewServeMux()
 	s.mux.HandleFunc("/", s.handleFile)
-	s.server.Handler = s.mux
+	s.protMux = http.NewServeMux()
+	s.protMux.Handle("/", s.mux)
+	s.server.Handler = s.protMux
 	return &s
 }
 
@@ -104,7 +107,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if hasSess {
 		if _, valid := s.auth.IsValid(cookie.Value); valid {
-			s.handleFile(w, r)
+			s.mux.ServeHTTP(w, r)
 			return
 		}
 	}
@@ -127,15 +130,18 @@ func (s *Server) RegisterAuth(auth Auth) {
 		s.mux.Handle(path, s.auth.Handler())
 	}
 	for _, path := range s.auth.Protect() {
-		s.mux.HandleFunc(path, s.handleLogin)
+		s.protMux.HandleFunc(path, s.handleLogin)
 	}
 }
 
 func (s *Server) RegisterApi(api Api) {
 	s.mux.HandleFunc("/api"+api.Path(), func(w http.ResponseWriter, r *http.Request) {
 		var user string
-		if cookie, err := r.Cookie("auth"); err == nil {
-			user, _ = s.auth.IsValid(cookie.Value)
+		for _, c := range r.Cookies() {
+			if c.Name == "auth" {
+				user, _ = s.auth.IsValid(c.Value)
+				break
+			}
 		}
 
 		var response, result interface{}

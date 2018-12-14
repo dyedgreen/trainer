@@ -28,10 +28,6 @@ const (
 	SessionStrLength = 256
 )
 
-var (
-	ProtectedPaths = []string{"/app/"}
-)
-
 var templ = template.Must(template.ParseFiles(
 	"web/template/login.html",
 	"web/template/register.html"))
@@ -130,7 +126,7 @@ func (a *Auth) Paths() []string {
 }
 
 func (a *Auth) Protect() []string {
-	return ProtectedPaths
+	return []string{"/app/", "/account"}
 }
 
 func (a *Auth) Handler() http.Handler {
