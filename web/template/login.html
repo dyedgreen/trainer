@@ -1,1 +1,14 @@
-TEST
+<!DOCTYPE html>
+<html lang="en">
+
+  <body>
+    <h1>Login Template</h1>
+    <h2>{{.Error}}</h2>
+    <form action="/login" method="post">
+      <input name="username" type="text" placeholder="Username" value="{{.Username}}">
+      <input name="password" type="password" placeholder="Password">
+      <input type="submit">
+    </form>
+  </body>
+
+</html>

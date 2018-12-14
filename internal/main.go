@@ -9,11 +9,9 @@ import (
 func main() {
 	s := server.New(":80")
 
-	a := &auth.Auth{}
+	a := auth.New()
+	defer a.Close()
 	s.RegisterAuth(a)
-
-	var api auth.Api
-	s.RegisterApi(api)
 
 	log.Fatal(s.ListenAndServe())
 }

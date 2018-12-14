@@ -29,6 +29,7 @@ type Auth interface {
 	// register etc. pages.
 	IsValid(session string) (string, bool)
 	Paths() []string
+	Protect() []string
 	Handler() http.Handler
 }
 
@@ -61,7 +62,6 @@ func New(addr string) *Server {
 	s.server.Addr = addr
 	s.mux = http.NewServeMux()
 	s.mux.HandleFunc("/", s.handleFile)
-	s.mux.HandleFunc("/l/", s.handleLogin)
 	s.server.Handler = s.mux
 	return &s
 }
@@ -113,6 +113,9 @@ func (s *Server) RegisterAuth(auth Auth) {
 	s.auth = auth
 	for _, path := range s.auth.Paths() {
 		s.mux.Handle(path, s.auth.Handler())
+	}
+	for _, path := range s.auth.Protect() {
+		s.mux.HandleFunc(path, s.handleLogin)
 	}
 }
 
