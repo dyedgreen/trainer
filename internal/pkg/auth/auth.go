@@ -18,6 +18,7 @@ var (
 	ErrUserExists    = errors.New("User already exists")
 	ErrPassword      = errors.New("Incorrect password")
 	ErrUserNotExists = errors.New("User does not exist")
+	ErrNoUserPass    = errors.New("No password or username specified")
 )
 
 // Constants and templates
@@ -38,8 +39,8 @@ var templ = template.Must(template.ParseFiles(
 // Types
 
 type Session struct {
-	Valid time.Time
-	User  string
+	Expires time.Time
+	User    string
 }
 
 type Auth struct {
@@ -64,6 +65,7 @@ func New() *Auth {
 		panic("Could not create user bucket")
 	}
 	a.db = db
+	a.sessions = make(map[string]Session)
 	return &a
 }
 
@@ -75,6 +77,9 @@ func (a *Auth) Close() {
 
 func (a *Auth) AddUser(user, pass string) error {
 	return a.db.Update(func(tx *bolt.Tx) error {
+		if user == "" || pass == "" {
+			return ErrNoUserPass
+		}
 		b := tx.Bucket([]byte("users"))
 		if (b.Get([]byte(user))) == nil {
 			hash := hashPassword(user, pass)
@@ -100,9 +105,7 @@ func (a *Auth) Login(user, pass string) (string, error) {
 			}
 			// Create session
 			sess = sessionString()
-			expire := time.Now()
-			expire.Add(SessionTimeout)
-			a.sessions[sess] = Session{time.Now(), user}
+			a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user}
 			go func() {
 				// Remove expired sessions
 				time.Sleep(SessionTimeout)
@@ -116,7 +119,7 @@ func (a *Auth) Login(user, pass string) (string, error) {
 // Server Auth interface implementation
 
 func (a *Auth) IsValid(sess string) (string, bool) {
-	if s := a.sessions[sess]; time.Now().Before(s.Valid) {
+	if s := a.sessions[sess]; time.Now().Before(s.Expires) {
 		return s.User, true
 	}
 	return "", false
@@ -133,16 +136,51 @@ func (a *Auth) Protect() []string {
 func (a *Auth) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", a.handleLogin)
+	mux.HandleFunc("/register", a.handleRegister)
 	return mux
 }
 
 // Handler functions
 
 func (a *Auth) handleLogin(w http.ResponseWriter, r *http.Request) {
-	var username string
-	
-	templ.ExecuteTemplate(w, "login.html", struct{
-		Error string
+	var message string
+	user, pass := r.PostFormValue("username"), r.PostFormValue("password")
+	if user != "" {
+		sess, err := a.Login(user, pass)
+		if err != nil {
+			message = err.Error()
+		} else {
+			var cookie http.Cookie
+			cookie.Name = "auth"
+			cookie.Value = sess
+			cookie.Expires = a.sessions[sess].Expires
+			http.SetCookie(w, &cookie)
+			r.URL.Path = a.Protect()[0]
+			http.Redirect(w, r, r.URL.String(), http.StatusFound)
+			return
+		}
+	}
+	templ.ExecuteTemplate(w, "login.html", struct {
+		Error    string
 		Username string
-	}{})
+	}{message, user})
+}
+
+func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
+	var message string
+	user, pass := r.PostFormValue("username"), r.PostFormValue("password")
+	if user != "" {
+		err := a.AddUser(user, pass)
+		if err != nil {
+			message = err.Error()
+		} else {
+			r.URL.Path = a.Paths()[0]
+			http.Redirect(w, r, r.URL.String(), http.StatusFound)
+			return
+		}
+	}
+	templ.ExecuteTemplate(w, "register.html", struct {
+		Error    string
+		Username string
+	}{message, user})
 }

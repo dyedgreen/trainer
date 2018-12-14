@@ -27,6 +27,11 @@ type Auth interface {
 	// This interface can register a handler
 	// for a set of paths to handle login /
 	// register etc. pages.
+	//
+	// The first path is expected to be the
+	// login page. It is the implementations
+	// responsibility to store the session string
+	// in the 'auth' cookie.
 	IsValid(session string) (string, bool)
 	Paths() []string
 	Protect() []string
@@ -89,8 +94,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		s.handleError(http.StatusInternalServerError, w)
 		return
 	}
-	cookie, err := r.Cookie("auth")
-	if err == nil {
+	var cookie *http.Cookie
+	var hasSess bool
+	for _, c := range r.Cookies() {
+		if c.Name == "auth" {
+			cookie = c
+			hasSess = true
+		}
+	}
+	if hasSess {
 		if _, valid := s.auth.IsValid(cookie.Value); valid {
 			s.handleFile(w, r)
 			return
