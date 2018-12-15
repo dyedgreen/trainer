@@ -26,10 +26,13 @@ var (
 const (
 	SessionTimeout   = 24 * time.Hour
 	SessionStrLength = 256
+	UserDbFile       = "./data/user.db"
+	UserDbBucket     = "users"
 )
 
 var templ = template.Must(template.ParseFiles(
 	"web/template/login.html",
+	"web/template/account.html",
 	"web/template/register.html"))
 
 // Types
@@ -48,12 +51,12 @@ type Auth struct {
 
 func New() *Auth {
 	var a Auth
-	db, err := bolt.Open("./data/user.db", 0600, &bolt.Options{Timeout: 5 * time.Second})
+	db, err := bolt.Open(UserDbFile, 0600, &bolt.Options{Timeout: 5 * time.Second})
 	if err != nil {
 		panic("Could not open user database")
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("users"))
+		_, err := tx.CreateBucketIfNotExists([]byte(UserDbBucket))
 		return err
 	})
 	if err != nil {
@@ -76,12 +79,31 @@ func (a *Auth) AddUser(user, pass string) error {
 		if user == "" || pass == "" {
 			return ErrNoUserPass
 		}
-		b := tx.Bucket([]byte("users"))
+		b := tx.Bucket([]byte(UserDbBucket))
 		if (b.Get([]byte(user))) == nil {
-			hash := hashPassword(user, pass)
-			return b.Put([]byte(user), hash[:])
+			return b.Put([]byte(user), hashPassword(user, pass))
 		} else {
 			return ErrUserExists
+		}
+	})
+}
+
+func (a *Auth) UpdateUser(user, pass, newPass string) error {
+	return a.db.Update(func(tx *bolt.Tx) error {
+		if user == "" || pass == "" || newPass == "" {
+			return ErrNoUserPass
+		}
+		b := tx.Bucket([]byte(UserDbBucket))
+		if hash := b.Get([]byte(user)); hash == nil {
+			return ErrUserNotExists
+		} else {
+			for i, c := range hashPassword(user, pass) {
+				if c != hash[i] {
+					return ErrPassword
+				}
+			}
+			// Update user password
+			return b.Put([]byte(user), hashPassword(user, newPass))
 		}
 	})
 }
@@ -89,12 +111,11 @@ func (a *Auth) AddUser(user, pass string) error {
 func (a *Auth) Login(user, pass string) (string, error) {
 	var sess string
 	return sess, a.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("users"))
+		b := tx.Bucket([]byte(UserDbBucket))
 		if hash := b.Get([]byte(user)); hash == nil {
 			return ErrUserNotExists
 		} else {
-			attempt := hashPassword(user, pass)
-			for i, c := range attempt[:] {
+			for i, c := range hashPassword(user, pass) {
 				if c != hash[i] {
 					return ErrPassword
 				}
@@ -133,6 +154,7 @@ func (a *Auth) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/login", a.handleLogin)
 	mux.HandleFunc("/register", a.handleRegister)
+	mux.HandleFunc("/account", a.handleAccount)
 	return mux
 }
 
@@ -179,4 +201,29 @@ func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Error    string
 		Username string
 	}{message, user})
+}
+
+func (a *Auth) handleAccount(w http.ResponseWriter, r *http.Request) {
+	var message, success string
+	pass, newPass := r.PostFormValue("old_pass"), r.PostFormValue("new_pass")
+	var user string
+	for _, c := range r.Cookies() {
+		if c.Name == "auth" {
+			user, _ = a.IsValid(c.Value)
+			break
+		}
+	}
+	if pass != "" {
+		err := a.UpdateUser(user, pass, newPass)
+		if err != nil {
+			message = err.Error()
+		} else {
+			success = "Password updated"
+		}
+	}
+	templ.ExecuteTemplate(w, "account.html", struct {
+		Error    string
+		Success  string
+		Username string
+	}{message, success, user})
 }

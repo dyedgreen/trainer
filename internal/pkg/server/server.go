@@ -6,9 +6,14 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"html/template"
 	"net/http"
 	"os"
+)
+
+var (
+	ErrApiNotFound = errors.New("Endpoint not found")
 )
 
 const (
@@ -54,6 +59,18 @@ type Api interface {
 
 var templ = template.Must(template.ParseFiles(templateRoot + "/error.html"))
 
+// Api 404
+
+type ApiPlaceholder string
+
+func (a ApiPlaceholder) Path() string {
+	return string(a)
+}
+
+func (a ApiPlaceholder) Call(r *http.Request, user string) (interface{}, error) {
+	return nil, ErrApiNotFound
+}
+
 // Server
 
 type Server struct {
@@ -71,6 +88,7 @@ func New(addr string) *Server {
 	s.protMux = http.NewServeMux()
 	s.protMux.Handle("/", s.mux)
 	s.server.Handler = s.protMux
+	s.RegisterApi(ApiPlaceholder("/"))
 	return &s
 }
 

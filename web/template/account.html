@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <body>
+    <h1>Account Template - {{.Username}}</h1>
+    <h2>{{.Error}}</h2>
+    <h2>{{.Success}}</h2>
+    <form action="/account" method="post">
+      <input name="old_pass" type="password" placeholder="Old Password">
+      <input name="new_pass" type="password" placeholder="New Password">
+      <input type="submit">
+    </form>
+  </body>
+
+</html>

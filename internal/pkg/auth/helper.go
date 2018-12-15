@@ -12,8 +12,9 @@ import (
 var sessionLetters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 var sessionLettersLen = big.NewInt(int64(len(sessionLetters)))
 
-func hashPassword(user, pass string) [sha256.Size]byte {
-	return sha256.Sum256([]byte(user + pass))
+func hashPassword(user, pass string) []byte {
+	hash := sha256.Sum256([]byte(user + pass))
+	return hash[:]
 }
 
 func sessionString() string {
