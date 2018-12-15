@@ -24,6 +24,8 @@ var (
 
 type Problem string
 
+type Subject string
+
 type ProblemQuestion struct {
 	Title string `json:"title"`
 	Text  string `json:"text"`
@@ -37,8 +39,8 @@ type ProblemSolution struct {
 	Space    string `json:"space"`
 }
 
-func (p Problem) Subject() string {
-	return string(p)[:strings.Index(string(p), "/")]
+func (p Problem) Subject() Subject {
+	return Subject(string(p)[:strings.Index(string(p), "/")])
 }
 
 func (p Problem) Path() string {

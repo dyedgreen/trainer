@@ -22,11 +22,5 @@ func main() {
 
 	s.RegisterApiFunc("/test", testApi)
 
-	// DEBUG - test problem
-	prob := problem.Problem("arrays/0")
-	pa, perra := prob.Question()
-	pb, perrb := prob.Solution()
-	fmt.Println(prob, prob.Path(), pa, perra, pb, perrb)
-
 	log.Fatal(s.ListenAndServe())
 }
