@@ -1,19 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"trainer/internal/pkg/auth"
+	"trainer/internal/pkg/problem"
 	"trainer/internal/pkg/server"
 )
 
-type testApi int
-
-func (t testApi) Path() string {
-	return "/test"
-}
-
-func (t testApi) Call(r *http.Request, user string) (interface{}, error) {
+func testApi(r *http.Request, user string) (interface{}, error) {
 	return user, nil
 }
 
@@ -24,8 +20,13 @@ func main() {
 	defer a.Close()
 	s.RegisterAuth(a)
 
-	test := testApi(0)
-	s.RegisterApi(test)
+	s.RegisterApiFunc("/test", testApi)
+
+	// DEBUG - test problem
+	prob := problem.Problem("arrays/0")
+	pa, perra := prob.Question()
+	pb, perrb := prob.Solution()
+	fmt.Println(prob, prob.Path(), pa, perra, pb, perrb)
 
 	log.Fatal(s.ListenAndServe())
 }

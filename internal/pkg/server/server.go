@@ -6,14 +6,9 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"html/template"
 	"net/http"
 	"os"
-)
-
-var (
-	ErrApiNotFound = errors.New("Endpoint not found")
 )
 
 const (
@@ -58,18 +53,6 @@ type Api interface {
 // Page Templates
 
 var templ = template.Must(template.ParseFiles(templateRoot + "/error.html"))
-
-// Api 404
-
-type ApiPlaceholder string
-
-func (a ApiPlaceholder) Path() string {
-	return string(a)
-}
-
-func (a ApiPlaceholder) Call(r *http.Request, user string) (interface{}, error) {
-	return nil, ErrApiNotFound
-}
 
 // Server
 
@@ -180,6 +163,10 @@ func (s *Server) RegisterApi(api Api) {
 		}
 		json.NewEncoder(w).Encode(response)
 	})
+}
+
+func (s *Server) RegisterApiFunc(path string, f func(*http.Request, string) (interface{}, error)) {
+	s.RegisterApi(&apiFunction{f, path})
 }
 
 // Functions used to run the server
