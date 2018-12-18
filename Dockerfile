@@ -2,7 +2,9 @@
 FROM golang:1.11.2-alpine as build
 
 RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh
+    apk add --no-cache bash git openssh gcc musl-dev
+
+RUN go get github.com/mattn/go-sqlite3
 
 WORKDIR /go/src/trainer
 COPY ./internal ./internal

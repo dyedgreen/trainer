@@ -5,8 +5,8 @@
 package auth
 
 import (
+	"database/sql"
 	"errors"
-	"github.com/boltdb/bolt"
 	"html/template"
 	"net/http"
 	"time"
@@ -15,6 +15,7 @@ import (
 // Errors
 
 var (
+	ErrInit          = errors.New("Could not initialize database")
 	ErrUserExists    = errors.New("User already exists")
 	ErrPassword      = errors.New("Incorrect password")
 	ErrUserNotExists = errors.New("User does not exist")
@@ -26,8 +27,6 @@ var (
 const (
 	SessionTimeout   = 24 * time.Hour
 	SessionStrLength = 256
-	UserDbFile       = "./data/user.db"
-	UserDbBucket     = "users"
 )
 
 var templ = template.Must(template.ParseFiles(
@@ -44,93 +43,65 @@ type Session struct {
 
 type Auth struct {
 	sessions map[string]Session
-	db       *bolt.DB
+	db       *sql.DB
 }
 
 // Functions
 
-func New() *Auth {
+func New(db *sql.DB) *Auth {
 	var a Auth
-	db, err := bolt.Open(UserDbFile, 0600, &bolt.Options{Timeout: 5 * time.Second})
-	if err != nil {
-		panic("Could not open user database")
-	}
-	err = db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(UserDbBucket))
-		return err
-	})
-	if err != nil {
-		a.db.Close()
-		panic("Could not create user bucket")
-	}
 	a.db = db
 	a.sessions = make(map[string]Session)
+	if err := initDb(a.db); err != nil {
+		panic(err.Error())
+	}
 	return &a
-}
-
-func (a *Auth) Close() {
-	a.db.Close()
 }
 
 // User management
 
 func (a *Auth) AddUser(user, pass string) error {
-	return a.db.Update(func(tx *bolt.Tx) error {
-		if user == "" || pass == "" {
-			return ErrNoUserPass
-		}
-		b := tx.Bucket([]byte(UserDbBucket))
-		if (b.Get([]byte(user))) == nil {
-			return b.Put([]byte(user), hashPassword(user, pass))
-		} else {
-			return ErrUserExists
-		}
-	})
+	if user == "" || pass == "" {
+		return ErrNoUserPass
+	} else if a.userExists(user) {
+		return ErrUserExists
+	}
+	var hash, salt string
+	salt = randomString(64)
+	hash = hashPassword(salt, pass)
+	return a.userInsert(user, hash, salt)
 }
 
 func (a *Auth) UpdateUser(user, pass, newPass string) error {
-	return a.db.Update(func(tx *bolt.Tx) error {
-		if user == "" || pass == "" || newPass == "" {
-			return ErrNoUserPass
-		}
-		b := tx.Bucket([]byte(UserDbBucket))
-		if hash := b.Get([]byte(user)); hash == nil {
-			return ErrUserNotExists
-		} else {
-			for i, c := range hashPassword(user, pass) {
-				if c != hash[i] {
-					return ErrPassword
-				}
-			}
-			// Update user password
-			return b.Put([]byte(user), hashPassword(user, newPass))
-		}
-	})
+	if user == "" || pass == "" || newPass == "" {
+		return ErrNoUserPass
+	} else if exists, hash, salt := a.userGet(user); !exists {
+		return ErrUserNotExists
+	} else if hashPassword(salt, pass) != hash {
+		return ErrPassword
+	}
+	// Update user
+	var hash, salt string
+	salt = randomString(64)
+	hash = hashPassword(salt, newPass)
+	return a.userUpdate(user, hash, salt)
 }
 
-func (a *Auth) Login(user, pass string) (string, error) {
-	var sess string
-	return sess, a.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(UserDbBucket))
-		if hash := b.Get([]byte(user)); hash == nil {
-			return ErrUserNotExists
-		} else {
-			for i, c := range hashPassword(user, pass) {
-				if c != hash[i] {
-					return ErrPassword
-				}
-			}
-			// Create session
-			sess = sessionString()
-			a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user}
-			go func() {
-				// Remove expired sessions
-				time.Sleep(SessionTimeout)
-				delete(a.sessions, sess)
-			}()
-		}
-		return nil
-	})
+func (a *Auth) Login(user, pass string) (sess string, err error) {
+	if exists, hash, salt := a.userGet(user); !exists {
+		err = ErrUserNotExists
+	} else if hashPassword(salt, pass) != hash {
+		err = ErrPassword
+	} else {
+		sess = randomString(SessionStrLength)
+		a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user}
+		go func() {
+			// Remove expired sessions
+			time.Sleep(SessionTimeout)
+			delete(a.sessions, sess)
+		}()
+	}
+	return
 }
 
 // Server Auth interface implementation

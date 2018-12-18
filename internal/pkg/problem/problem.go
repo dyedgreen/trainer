@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Constants and erors
+// Constants and errors
 
 const (
 	ProblemDir = "./data/problems"

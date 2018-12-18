@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
 	"trainer/internal/pkg/auth"
-	"trainer/internal/pkg/problem"
 	"trainer/internal/pkg/server"
 )
 
@@ -16,8 +16,13 @@ func testApi(r *http.Request, user string) (interface{}, error) {
 func main() {
 	s := server.New(":80")
 
-	a := auth.New()
-	defer a.Close()
+	db, err := sql.Open("sqlite3", "./data/trainer.db")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	a := auth.New(db)
 	s.RegisterAuth(a)
 
 	s.RegisterApiFunc("/test", testApi)
