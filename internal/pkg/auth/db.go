@@ -11,7 +11,7 @@ func initDb(db *sql.DB) (err error) {
 	query := `
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-		username VARCHAR(64),
+		username VARCHAR(64) NOT NULL UNIQUE,
 		password VARCHAR(256),
 		salt VARCHAR(64)
 	);
