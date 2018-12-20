@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+    <meta charset="utf-8">
+
+    <link href="/css/app.css" type="text/css" rel="stylesheet">
+    <link href="/lib/codemirror/codemirror.css" type="text/css" rel="stylesheet">
+    <link href="/lib/codemirror/material.css" type="text/css" rel="stylesheet">
+
+    <link href="/lib/fontello/fontello.css" rel="stylesheet">
+
+    <title>Trainer 💪</title>
+  </head>
+
+  <body>
+
+    <!-- Code Editor -->
+    <div class="editor font-mono">
+      <div class="code">
+        <textarea id="code"></textarea>
+        <a id="button-run" class="button icon-run">Run</a>
+      </div>
+      <div class="console">
+        <console-widget id="console"></console-widget>
+      </div>
+    </div>
+
+    <!-- Question Sheet -->
+    <div class="sheet">
+      <div class="header">
+        <timer-widget id="timer" duration="1200"></timer-widget>
+        <span>
+          <a id="button-correct" class="button icon-correct">Correct</a>
+          <a id="button-wrong" class="button icon-wrong">Wrong</a>
+        </span>
+      </div>
+      <div class="content">
+        <problem-widget id="problem" title="Hello World!" text="Write your problem here..." solution="Write your solution here...">
+        </problem-widget>
+      </div>
+    </div>
+
+  </body>
+
+  <script src="/lib/codemirror/codemirror.js"></script>
+  <script src="/lib/codemirror/javascript.js"></script>
+  <script src="/js/widgets.js"></script>
+  <script src="/js/app.js"></script>
+
+</html>

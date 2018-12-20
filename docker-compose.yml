@@ -5,6 +5,7 @@ services:
     build: .
     volumes:
       - ./data:/app/data
+      - ./web:/app/web
     ports:
       - 80:80
 
