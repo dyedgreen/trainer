@@ -1,14 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 
+  <head>
+    <meta charset="utf-8">
+
+    <link href="/css/app.css" type="text/css" rel="stylesheet">
+    <link href="/css/form.css" type="text/css" rel="stylesheet">
+    <link href="/lib/fontello/fontello.css" rel="stylesheet">
+
+    <title>Account</title>
+  </head>
+
   <body>
-    <h1>Account Template - {{.Username}}</h1>
-    <h2>{{.Error}}</h2>
-    <h2>{{.Success}}</h2>
-    <form action="/account" method="post">
+    <form id="form" action="/account" method="post">
+      <h1>Account ({{.Username}})</h1>
+      {{ if .Error }}<h2 class="icon-warning">{{.Error}}</h2>{{ end }}
+      {{ if .Success }}<h2 class="icon-save">{{.Success}}</h2>{{ end }}
       <input name="old_pass" type="password" placeholder="Old Password">
       <input name="new_pass" type="password" placeholder="New Password">
-      <input type="submit">
+      <input type="submit" style="opacity: 0; height: 0; margin: 0;">
+      <a id="button" class="button">Change Password</a>
+      <a href="/app" class="button">Done</a>
+      <script>document.getElementById("button").onclick = () => {document.getElementById("form").submit()}</script>
     </form>
   </body>
 

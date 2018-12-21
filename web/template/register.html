@@ -1,13 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 
+  <head>
+    <meta charset="utf-8">
+
+    <link href="/css/app.css" type="text/css" rel="stylesheet">
+    <link href="/css/form.css" type="text/css" rel="stylesheet">
+    <link href="/lib/fontello/fontello.css" rel="stylesheet">
+
+    <title>Register</title>
+  </head>
+
   <body>
-    <h1>Register Template</h1>
-    <h2>{{.Error}}</h2>
-    <form action="/register" method="post">
+    <form id="form" action="/register" method="post">
+      <h1>Register</h1>
+      {{ if .Error }}<h2 class="icon-warning">{{.Error}}</h2>{{ end }}
       <input name="username" type="text" placeholder="Username" value="{{.Username}}">
       <input name="password" type="password" placeholder="Password">
-      <input type="submit">
+      <input type="submit" style="opacity: 0; height: 0; margin: 0;">
+      <a id="button" class="button">Register</a>
+      <a class="button" href="/login">Login</a>
+      <script>document.getElementById("button").onclick = () => {document.getElementById("form").submit()}</script>
     </form>
   </body>
 

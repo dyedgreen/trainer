@@ -5,8 +5,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"trainer/internal/pkg/auth"
-	"trainer/internal/pkg/server"
 	"trainer/internal/pkg/problem"
+	"trainer/internal/pkg/server"
 )
 
 func main() {

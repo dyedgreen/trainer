@@ -62,7 +62,7 @@ func (b *Box) createProblem(p Problem) (Problem, error) {
 	}
 }
 
-func (b *Box) updateProblem(p Problem) (error) {
+func (b *Box) updateProblem(p Problem) error {
 	if p.Title == "" || p.Question == "" || p.Solution == "" {
 		return ErrEmpty
 	}

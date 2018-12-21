@@ -9,6 +9,7 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -158,6 +159,7 @@ func (a *Auth) handleLogin(w http.ResponseWriter, r *http.Request) {
 func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
 	var message string
 	user, pass := r.PostFormValue("username"), r.PostFormValue("password")
+	user = strings.Trim(user, " ")
 	if user != "" {
 		err := a.AddUser(user, pass)
 		if err != nil {

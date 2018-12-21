@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-  
+
   <head>
     <meta charset="utf-8">
 
     <link href="/css/app.css" type="text/css" rel="stylesheet">
     <link href="/lib/codemirror/codemirror.css" type="text/css" rel="stylesheet">
     <link href="/lib/codemirror/material.css" type="text/css" rel="stylesheet">
-
     <link href="/lib/fontello/fontello.css" rel="stylesheet">
 
     <title>Trainer 💪</title>
   </head>
 
   <body>
-
     <!-- Code Editor -->
     <div class="editor font-mono">
       <div class="code">
@@ -33,6 +31,7 @@
         <span>
           <a id="button-correct" class="button icon-correct">Correct</a>
           <a id="button-wrong" class="button icon-wrong">Wrong</a>
+          <a href="/account" class="button icon-user" target="_blank"></a>
         </span>
       </div>
       <div class="content">
@@ -42,7 +41,6 @@
     </div>
 
     <modal-widget id="modal" class="hidden"></modal-widget>
-
   </body>
 
   <script src="/lib/codemirror/codemirror.js"></script>
