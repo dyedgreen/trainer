@@ -16,6 +16,8 @@ var (
 
 func initDb(db *sql.DB) (err error) {
 	query := `
+	PRAGMA foreign_keys = ON;
+
 	CREATE TABLE IF NOT EXISTS problems (
 		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 		title VARCHAR(64),
