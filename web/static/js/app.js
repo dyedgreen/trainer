@@ -92,7 +92,7 @@ ui.buttons.run.onclick = run;
 
 function save() {
   // Save the problem when edited
-  apiPost("/problems/update", {
+  apiPost("/problem/update", {
     id: problemId,
     title: ui.problem.title,
     question: ui.problem.question,
@@ -110,11 +110,11 @@ ui.problem.onsave = save;
 
 function submit(correct) {
   // Submit the session
-  apiPost("/problems/submit", {
+  apiPost("/problem/submit", {
     id: problemId,
     code: ui.editor.getValue(),
     time: ui.timer.elapsed,
-    solved: correct,
+    solved: correct ? "1" : "0",
   }, res => {
     if (res.error) {
       showError(res.error);
@@ -122,7 +122,7 @@ function submit(correct) {
       showModal(
         "Session Recorded",
         correct ? "Great work today, see you tomorrow!" : "Practice makes perfect, try again tomorrow!",
-        "Return To Overview",
+        "Attempt Next Problem",
         () => window.location.href = "/app"
       );
     }
@@ -132,7 +132,7 @@ ui.buttons.correct.onclick = () => submit(true);
 ui.buttons.wrong.onclick = () => submit(false);
 
 function loadProblem() {
-  apiPost("/problems/next", {}, res => {
+  apiPost("/problem/next", {}, res => {
     if (res.error) {
       showModal(
         "Could Not Load Problem",
@@ -160,6 +160,6 @@ function loadProblem() {
 
 // Load problem from server
 
-let problemId = -1; // Is initialized by server
+let problemId = -1; // Is initialized by server, -1 <=> this will be a new problem
 
 loadProblem();
