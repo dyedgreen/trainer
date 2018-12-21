@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -112,7 +113,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if len(s.auth.Paths()) > 0 {
+	if strings.HasPrefix(r.URL.Path, "/api") {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		response := struct {
+			Error string      `json:"error"`
+			Value interface{} `json:"value"`
+		}{"Not logged in", nil}
+		json.NewEncoder(w).Encode(response)
+	} else if len(s.auth.Paths()) > 0 {
 		r.URL.Path = s.auth.Paths()[0]
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	} else {
