@@ -1,5 +1,26 @@
 "use strict";
 
+// Api wrapper
+
+function apiPost(endpoint, data, callback) {
+  if (typeof data !== "object") throw "No data object given";
+
+  let req = new XMLHttpRequest();
+  req.open("POST", `/api${endpoint}`, true);
+  req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
+  let reqData = new FormData();
+  Object.keys(data).forEach(key => reqData.append(key, data[key]));
+  req.onload = () => {
+    let res = JSON.parse(req.responseText);
+    if (typeof res !== "object" || !res.hasOwnProperty("error") || !res.hasOwnProperty("value")) {
+      throw "Corrupted response data";
+    }
+    if (typeof callback === "function") callback(res);
+  };
+  req.send(reqData);
+}
+
+
 // Initialize app, gather all components
 
 let ui = {};
@@ -18,11 +39,27 @@ ui.editor.setSize("100%", "100%");
 ui.timer = document.getElementById("timer");
 ui.problem = document.getElementById("problem");
 ui.console = document.getElementById("console");
+ui.modal = document.getElementById("modal");
 ui.buttons = {};
 ["run", "correct", "wrong"].forEach(btn => ui.buttons[btn] = document.getElementById(`button-${btn}`));
 
 
 // App ui logic
+
+function showModal(title, text, button, callback) {
+  ui.modal.setAttribute("title", title);
+  ui.modal.setAttribute("text", text);
+  ui.modal.setAttribute("button", button);
+  ui.modal.onclose = () => {
+    callback();
+    ui.modal.onclose = () => {};
+  };
+  ui.modal.show();
+}
+
+function showError(msg) {
+  showModal("An Error Occurred", msg, "Done", () => {});
+}
 
 function finish() {
   // Called on timer stop and view-solution
@@ -46,14 +83,83 @@ function run() {
   worker.onerror = () => ui.console.log("An error occurred!");
   worker.onmessage = msg => ui.console.log(...msg.data);
   worker.postMessage(ui.editor.getValue());
+  setTimeout(() => {
+    // Timeout after 30 seconds
+    worker.terminate();
+  }, 30000);
 }
 ui.buttons.run.onclick = run;
 
+function save() {
+  // Save the problem when edited
+  apiPost("/problems/update", {
+    id: problemId,
+    title: ui.problem.title,
+    question: ui.problem.question,
+    solution: ui.problem.solution,
+  }, res => {
+    if (res.error) {
+      showError(res.error);
+    } else {
+      // Update problem id
+      problemId = +res.value;
+    }
+  });
+}
+ui.problem.onsave = save;
+
 function submit(correct) {
-  // Post result to server
+  // Submit the session
+  apiPost("/problems/submit", {
+    id: problemId,
+    code: ui.editor.getValue(),
+    time: ui.timer.elapsed,
+    solved: correct,
+  }, res => {
+    if (res.error) {
+      showError(res.error);
+    } else {
+      showModal(
+        "Session Recorded",
+        correct ? "Great work today, see you tomorrow!" : "Practice makes perfect, try again tomorrow!",
+        "Return To Overview",
+        () => window.location.href = "/app"
+      );
+    }
+  });
 }
 ui.buttons.correct.onclick = () => submit(true);
 ui.buttons.wrong.onclick = () => submit(false);
 
+function loadProblem() {
+  apiPost("/problems/next", {}, res => {
+    if (res.error) {
+      showModal(
+        "Could Not Load Problem",
+        res.error,
+        "Try Again",
+        loadProblem
+      );
+    } else if (res.value) {
+      // A new problem is already scheduled
+      problemId = +res.id;
+      ui.problem.setTitle(res.title);
+      ui.problem.setQuestion(res.question);
+      ui.problem.setSolution(res.solution);
+    } else {
+      showModal(
+        "No Problem Scheduled",
+        "Please find a new problem and try to solve it!",
+        "Done",
+        () => {}
+      );
+    }
+  });
+}
+
 
 // Load problem from server
+
+let problemId = -1; // Is initialized by server
+
+loadProblem();

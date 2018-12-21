@@ -2,6 +2,44 @@
 
 // Custom HTML Elements
 
+class ModalWidget extends HTMLElement {
+  constructor() {
+    super();
+    // State
+    this.innerHTML = '<div><h1></h1><p></p><a class="button"></a></div>';
+    this.titleElem = this.childNodes[0].childNodes[0];
+    this.textElem = this.childNodes[0].childNodes[1];
+    this.buttonElem = this.childNodes[0].childNodes[2];
+    // Actions
+    this.buttonElem.onclick = () => {this.close()};
+    // Draw modal
+    this.titleElem.innerHTML = this.hasAttribute("title") ? this.getAttribute("title") : "";
+    this.textElem.innerHTML = this.hasAttribute("text") ? this.getAttribute("text") : "";
+    this.buttonElem.innerHTML = this.hasAttribute("button") ? this.getAttribute("button") : "";
+  }
+
+  setAttribute(...args) {
+    HTMLElement.prototype.setAttribute.call(this, ...args);
+    if (["title", "text", "button"].indexOf(args[0]) !== -1) {
+      this[`${args[0]}Elem`].innerHTML = this.hasAttribute(args[0]) ? this.getAttribute(args[0]) : "";
+    }
+  }
+
+  show() {
+    this.classList.remove("hidden");
+  }
+
+  close() {
+    this.classList.add("hidden");
+    this.onclose();
+  }
+
+  onclose() {
+    // Overwrite this function to register a handler
+  }
+}
+customElements.define("modal-widget", ModalWidget);
+
 class TimerWidget extends HTMLElement {
   constructor() {
     super();
@@ -89,7 +127,7 @@ class ProblemWidget extends HTMLElement {
     // State
     this.innerHTML = '<h1></h1><p></p><h2 class="hidden">Solution</h2><p class="hidden"></p><a class="button icon-done">Show Solution</a><a class="button icon-edit">Edit</a>';
     this.titleElem = this.childNodes[0];
-    this.textElem = this.childNodes[1];
+    this.questionElem = this.childNodes[1];
     this.solutionHead = this.childNodes[2];
     this.solutionElem = this.childNodes[3];
     this.buttonDone = this.childNodes[4];
@@ -100,7 +138,7 @@ class ProblemWidget extends HTMLElement {
     this.buttonEdit.onclick = () => {this.toggleEdit()};
     // Initial draw
     this.titleElem.innerHTML = this.hasAttribute("title") ? this.getAttribute("title") : "";
-    this.textElem.innerHTML = this.hasAttribute("text") ? this.getAttribute("text") : "";
+    this.questionElem.innerHTML = this.hasAttribute("question") ? this.getAttribute("question") : "";
     this.solutionElem.innerHTML = this.hasAttribute("solution") ? this.getAttribute("solution") : "";
   }
 
@@ -108,8 +146,8 @@ class ProblemWidget extends HTMLElement {
     this.titleElem.innerHTML = "".concat(str);
   }
 
-  setText(str) {
-    this.textElem.innerHTML = "".concat(str);
+  setQuestion(str) {
+    this.questionElem.innerHTML = "".concat(str);
   }
 
   setSolution(str) {
@@ -120,8 +158,8 @@ class ProblemWidget extends HTMLElement {
     return "".concat(this.titleElem.innerHTML);
   }
 
-  get text() {
-    return "".concat(this.textElem.innerHTML);
+  get question() {
+    return "".concat(this.questionElem.innerHTML);
   }
 
   get solution() {
@@ -129,7 +167,7 @@ class ProblemWidget extends HTMLElement {
   }
 
   sanitize () {
-    [this.titleElem, this.textElem, this.solutionElem].forEach(elem => {
+    [this.titleElem, this.questionElem, this.solutionElem].forEach(elem => {
       elem.innerHTML = "".concat(elem.innerHTML).replace(
         /\<[^>/]+\>/g, "\n").replace(
         /\<[^>]+\>/g, "");
@@ -151,7 +189,7 @@ class ProblemWidget extends HTMLElement {
     }
     this.buttonEdit.innerHTML = this.edit ? "Save" : "Edit";
     this.titleElem.setAttribute("contenteditable", contenteditable);
-    this.textElem.setAttribute("contenteditable", contenteditable);
+    this.questionElem.setAttribute("contenteditable", contenteditable);
     this.solutionElem.setAttribute("contenteditable", contenteditable);
   }
 
@@ -186,7 +224,9 @@ class ConsoleWidget extends HTMLElement {
   }
 
   log(...msg) {
-    this.messages.push(msg.reduce((str, obj) => str + " ".concat(JSON.stringify(obj)), ""));
+    this.messages.push(msg.reduce((str, obj) => {
+      return str + " ".concat(typeof obj === "string" ? obj : JSON.stringify(obj))
+    }, ""));
     this.render();
   }
 
