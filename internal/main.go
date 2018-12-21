@@ -4,14 +4,10 @@ import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
-	"net/http"
 	"trainer/internal/pkg/auth"
 	"trainer/internal/pkg/server"
+	"trainer/internal/pkg/problem"
 )
-
-func testApi(r *http.Request, user string) (interface{}, error) {
-	return user, nil
-}
 
 func main() {
 	s := server.New(":80")
@@ -25,7 +21,10 @@ func main() {
 	a := auth.New(db)
 	s.RegisterAuth(a)
 
-	s.RegisterApiFunc("/test", testApi)
+	box := problem.NewBox(db)
+	s.RegisterApiFunc("/problem/update", box.ProblemUpdate)
+	s.RegisterApiFunc("/problem/submit", box.ProblemSubmit)
+	s.RegisterApiFunc("/problem/next", box.ProblemNext)
 
 	log.Fatal(s.ListenAndServe())
 }

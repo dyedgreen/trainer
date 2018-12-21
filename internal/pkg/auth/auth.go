@@ -118,7 +118,7 @@ func (a *Auth) Paths() []string {
 }
 
 func (a *Auth) Protect() []string {
-	return []string{"/app/", "/account"}
+	return []string{"/app/", "/api/problem/", "/account"}
 }
 
 func (a *Auth) Handler() http.Handler {

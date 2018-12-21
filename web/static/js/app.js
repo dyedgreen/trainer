@@ -7,7 +7,6 @@ function apiPost(endpoint, data, callback) {
 
   let req = new XMLHttpRequest();
   req.open("POST", `/api${endpoint}`, true);
-  req.setRequestHeader("content-type", "application/x-www-form-urlencoded");
   let reqData = new FormData();
   Object.keys(data).forEach(key => reqData.append(key, data[key]));
   req.onload = () => {
@@ -142,10 +141,10 @@ function loadProblem() {
       );
     } else if (res.value) {
       // A new problem is already scheduled
-      problemId = +res.id;
-      ui.problem.setTitle(res.title);
-      ui.problem.setQuestion(res.question);
-      ui.problem.setSolution(res.solution);
+      problemId = +res.value.id;
+      ui.problem.setTitle(res.value.title);
+      ui.problem.setQuestion(res.value.question);
+      ui.problem.setSolution(res.value.solution);
     } else {
       showModal(
         "No Problem Scheduled",

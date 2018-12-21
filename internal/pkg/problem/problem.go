@@ -1,76 +1,100 @@
-// The problem package can retrieve and evaluate
-// coding problems
+// The problem package manages problems for
+// users
 
 package problem
 
 import (
-	"encoding/json"
-	"errors"
-	"os"
+	"database/sql"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
+	"fmt"
 )
 
-// Constants and errors
-
-const (
-	ProblemDir = "./data/problems"
-)
-
-var (
-	ErrNotExist = errors.New("Problem not found")
-)
-
-// Problem datatype
-
-type Problem string
-
-type Subject string
-
-type ProblemQuestion struct {
-	Title string `json:"title"`
-	Text  string `json:"text"`
-	Input string `json:"input`
-}
-
-type ProblemSolution struct {
+type Problem struct {
+	Id       int64  `json:"id"`
+	Title    string `json:"title"`
+	Question string `json:"question"`
 	Solution string `json:"solution"`
-	Output   string `json:"output"`
-	Time     string `json:"time"`
-	Space    string `json:"space"`
 }
 
-func (p Problem) Subject() Subject {
-	return Subject(string(p)[:strings.Index(string(p), "/")])
+type Session struct {
+	Id      int64
+	Problem int64
+	User    string
+	Date    int64
+	Code    string
+	Time    int64
+	Solved  bool
 }
 
-func (p Problem) Path() string {
-	return ProblemDir + "/" + string(p) + ".json"
+type Box struct {
+	// Contains problems
+	db *sql.DB
 }
 
-func (p Problem) Exists() bool {
-	_, err := os.Stat(p.Path())
-	return err == nil
-}
-
-func (p Problem) load(out interface{}) error {
-	if !p.Exists() {
-		return ErrNotExist
+func NewBox(db *sql.DB) *Box {
+	if err := initDb(db); err != nil {
+		panic(err.Error())
 	}
-	f, err := os.Open(p.Path())
-	defer f.Close()
-	if err != nil {
-		return err
+	var b Box
+	b.db = db
+	return &b
+}
+
+// Implement server api functions
+
+func (b *Box) ProblemUpdate(r *http.Request, user string) (interface{}, error) {
+	// Update (or create) problem and return problem id
+	var id int64
+	var err error
+	if id, err = strconv.ParseInt(r.FormValue("id"), 10, 64); err != nil {
+		return nil, err
 	}
-	dec := json.NewDecoder(f)
-	return dec.Decode(out)
+	problem := Problem{id, r.FormValue("title"), r.FormValue("question"), r.FormValue("solution")}
+	problem.Title = strings.Trim(problem.Title, " \n")
+	problem.Question = strings.Trim(problem.Question, " \n")
+	problem.Solution = strings.Trim(problem.Solution, " \n")
+	if id == -1 {
+		problem, err := b.createProblem(problem)
+		return problem.Id, err
+	} else {
+		err := b.updateProblem(problem)
+		return problem.Id, err
+	}
 }
 
-func (p Problem) Question() (*ProblemQuestion, error) {
-	var question ProblemQuestion
-	return &question, p.load(&question)
+func (b *Box) ProblemSubmit(r *http.Request, user string) (interface{}, error) {
+	// Record this session
+	var sess Session
+	var err error
+	if sess.Problem, err = strconv.ParseInt(r.FormValue("id"), 10, 64); err != nil {
+		return nil, err
+	}
+	sess.User = user
+	sess.Date = time.Now().Unix()
+	sess.Code = strings.Trim(r.FormValue("code"), " ")
+	if sess.Time, err = strconv.ParseInt(r.FormValue("time"), 10, 64); err != nil {
+		return nil, err
+	}
+	sess.Solved = r.FormValue("solved") != "0"
+	if err := b.storeSession(sess); err != nil {
+		return nil, err
+	}
+	// Schedule problem for later
+	n := time.Duration(b.numSuccessfulAttempts(sess.Problem, user))
+	due := time.Now().Add(time.Hour*24*7*n + time.Hour)
+	return nil, b.scheduleProblem(sess.Problem, user, due.Unix())
 }
 
-func (p Problem) Solution() (*ProblemSolution, error) {
-	var solution ProblemSolution
-	return &solution, p.load(&solution)
+func (b *Box) ProblemNext(r *http.Request, user string) (interface{}, error) {
+	// Suggest the following: scheduled, not-attempted, false (write new problem)
+	if p, err := b.nextScheduledProblem(user); err == nil {
+		return p, err
+	} else if p, err = b.notScheduledProblem(user); err == nil {
+		return p, err
+	} else {
+		return false, nil
+	}
 }
