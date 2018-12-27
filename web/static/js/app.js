@@ -16,6 +16,9 @@ function apiPost(endpoint, data, callback) {
     }
     if (typeof callback === "function") callback(res);
   };
+  req.onerror = () => {
+    if (typeof callback === "function") callback({error:"Server did not respond", value:null});
+  };
   req.send(reqData);
 }
 
