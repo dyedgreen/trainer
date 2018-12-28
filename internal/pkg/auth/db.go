@@ -32,12 +32,12 @@ func (a *Auth) userExists(username string) bool {
 	return count == 1
 }
 
-func (a *Auth) userGet(username string) (exists bool, password, salt string) {
+func (a *Auth) userGet(username string) (exists bool, id int64, password, salt string) {
 	query := `
-	SELECT password, salt FROM users WHERE username = ?
+	SELECT id, password, salt FROM users WHERE username = ?
 	`
 	row := a.db.QueryRow(query, username)
-	exists = row.Scan(&password, &salt) == nil
+	exists = row.Scan(&id, &password, &salt) == nil
 	return
 }
 

@@ -33,9 +33,17 @@ type Auth interface {
 	// login page. It is the implementations
 	// responsibility to store the session string
 	// in the 'auth' cookie.
-	IsValid(session string) (string, bool)
+
+	// Check if a session is valid. Return
+	// user id and whether the session is
+	// valid.
+	IsValid(session string) (int64, bool)
+	// Paths handled by the auth provider
 	Paths() []string
+	// Paths that should be protected. These
+	// can be api paths as well.
 	Protect() []string
+	// Handler for Paths()
 	Handler() http.Handler
 }
 
@@ -48,7 +56,7 @@ type Api interface {
 	// identifier (or empty string if not logged
 	// in)
 	Path() string
-	Call(r *http.Request, user string) (interface{}, error)
+	Call(r *http.Request, user int64) (interface{}, error)
 }
 
 // Page Templates
@@ -146,7 +154,7 @@ func (s *Server) RegisterAuth(auth Auth) {
 
 func (s *Server) RegisterApi(api Api) {
 	s.mux.HandleFunc("/api"+api.Path(), func(w http.ResponseWriter, r *http.Request) {
-		var user string
+		var user int64
 		for _, c := range r.Cookies() {
 			if c.Name == "auth" {
 				user, _ = s.auth.IsValid(c.Value)
@@ -174,12 +182,26 @@ func (s *Server) RegisterApi(api Api) {
 	})
 }
 
-func (s *Server) RegisterApiFunc(path string, f func(*http.Request, string) (interface{}, error)) {
+func (s *Server) RegisterApiFunc(path string, f func(*http.Request, int64) (interface{}, error)) {
 	s.RegisterApi(&apiFunction{f, path})
 }
 
 // Functions used to run the server
 
+// Wrapper for http servers ListenAndServe()
 func (s *Server) ListenAndServe() error {
 	return s.server.ListenAndServe()
+}
+
+// Wrapper for http servers ListenAndServeTLS(). This also
+// starts and additional redirect from http to https. The
+// redirect always listens on port 80.
+func (s *Server) ListenAndServeTLS(certFile, keyFile string, redirect bool) error {
+	if redirect {
+		go http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.URL.Scheme = "https"
+			http.Redirect(w, r, r.URL.String(), http.StatusPermanentRedirect)
+		}))
+	}
+	return s.server.ListenAndServeTLS(certFile, keyFile)
 }

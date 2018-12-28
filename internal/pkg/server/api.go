@@ -18,12 +18,12 @@ func (a ApiPlaceholder) Path() string {
 	return string(a)
 }
 
-func (a ApiPlaceholder) Call(r *http.Request, user string) (interface{}, error) {
+func (a ApiPlaceholder) Call(r *http.Request, user int64) (interface{}, error) {
 	return nil, ErrApiNotFound
 }
 
 type apiFunction struct {
-	f    func(*http.Request, string) (interface{}, error)
+	f    func(*http.Request, int64) (interface{}, error)
 	path string
 }
 
@@ -31,6 +31,6 @@ func (a *apiFunction) Path() string {
 	return a.path
 }
 
-func (a *apiFunction) Call(r *http.Request, user string) (interface{}, error) {
+func (a *apiFunction) Call(r *http.Request, user int64) (interface{}, error) {
 	return a.f(r, user)
 }

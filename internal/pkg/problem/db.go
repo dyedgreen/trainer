@@ -87,7 +87,7 @@ func (b *Box) storeSession(s Session) (err error) {
 	query := `
 	INSERT INTO sessions (problem, user, date, code, time, solved) values (
 		?,
-		(SELECT id FROM users WHERE username = ? LIMIT 1),
+		?,
 		?,
 		?,
 		?,
@@ -98,14 +98,10 @@ func (b *Box) storeSession(s Session) (err error) {
 	return
 }
 
-func (b *Box) numSuccessfulAttempts(id int64, user string) (num int) {
+func (b *Box) numSuccessfulAttempts(id, user int64) (num int) {
 	query := `
-	SELECT COUNT(*) FROM sessions WHERE solved = 1 AND problem = ? AND user = (
-		SELECT id FROM users WHERE username = ? LIMIT 1
-	) AND date > IFNULL(
-		(SELECT date FROM sessions WHERE solved != 1 AND problem = ? AND user = (
-			SELECT id FROM users WHERE username = ? LIMIT 1
-		) ORDER BY date DESC LIMIT 1),
+	SELECT COUNT(*) FROM sessions WHERE solved = 1 AND problem = ? AND user = ? AND date > IFNULL(
+		(SELECT date FROM sessions WHERE solved != 1 AND problem = ? AND user = ? ORDER BY date DESC LIMIT 1),
 		0
 	);
 	`
@@ -114,15 +110,13 @@ func (b *Box) numSuccessfulAttempts(id int64, user string) (num int) {
 	return
 }
 
-func (b *Box) scheduleProblem(id int64, user string, due int64) (err error) {
+func (b *Box) scheduleProblem(id, user, due int64) (err error) {
 	query := `
-	DELETE FROM schedule WHERE problem = ? AND user = (
-		SELECT id FROM users WHERE username = ? LIMIT 1
-	);
+	DELETE FROM schedule WHERE problem = ? AND user = ?;
 
 	INSERT INTO schedule (problem, user, due) VALUES (
 		?,
-		(SELECT id FROM users WHERE username = ? LIMIT 1),
+		?,
 		?
 	);
 	`
@@ -130,12 +124,10 @@ func (b *Box) scheduleProblem(id int64, user string, due int64) (err error) {
 	return
 }
 
-func (b *Box) nextScheduledProblem(user string) (p Problem, err error) {
+func (b *Box) nextScheduledProblem(user int64) (p Problem, err error) {
 	query := `
 	SELECT id, title, question, solution FROM problems WHERE id = (
-		SELECT problem FROM schedule WHERE due <= ? AND user = (
-			SELECT id FROM users WHERE username = ? LIMIT 1
-		) ORDER BY due ASC LIMIT 1
+		SELECT problem FROM schedule WHERE due <= ? AND user = ? ORDER BY due ASC LIMIT 1
 	);
 	`
 	row := b.db.QueryRow(query, time.Now().Unix(), user)
@@ -143,12 +135,10 @@ func (b *Box) nextScheduledProblem(user string) (p Problem, err error) {
 	return
 }
 
-func (b *Box) notScheduledProblem(user string) (p Problem, err error) {
+func (b *Box) notScheduledProblem(user int64) (p Problem, err error) {
 	query := `
 	SELECT id, title, question, solution FROM problems WHERE NOT id IN (
-		SELECT problem FROM schedule WHERE user = (
-			SELECT id FROM users WHERE username = ?
-		)
+		SELECT problem FROM schedule WHERE user = ?
 	) ORDER BY RANDOM() LIMIT 1;
 	`
 	row := b.db.QueryRow(query, user)

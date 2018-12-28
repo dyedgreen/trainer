@@ -21,7 +21,7 @@ type Problem struct {
 type Session struct {
 	Id      int64
 	Problem int64
-	User    string
+	User    int64
 	Date    int64
 	Code    string
 	Time    int64
@@ -44,7 +44,7 @@ func NewBox(db *sql.DB) *Box {
 
 // Implement server api functions
 
-func (b *Box) ProblemUpdate(r *http.Request, user string) (interface{}, error) {
+func (b *Box) ProblemUpdate(r *http.Request, user int64) (interface{}, error) {
 	// Update (or create) problem and return problem id
 	var id int64
 	var err error
@@ -64,7 +64,7 @@ func (b *Box) ProblemUpdate(r *http.Request, user string) (interface{}, error) {
 	}
 }
 
-func (b *Box) ProblemSubmit(r *http.Request, user string) (interface{}, error) {
+func (b *Box) ProblemSubmit(r *http.Request, user int64) (interface{}, error) {
 	// Record this session
 	var sess Session
 	var err error
@@ -87,7 +87,7 @@ func (b *Box) ProblemSubmit(r *http.Request, user string) (interface{}, error) {
 	return nil, b.scheduleProblem(sess.Problem, user, due.Unix())
 }
 
-func (b *Box) ProblemNext(r *http.Request, user string) (interface{}, error) {
+func (b *Box) ProblemNext(r *http.Request, user int64) (interface{}, error) {
 	// Suggest the following: scheduled, not-attempted, false (write new problem)
 	if p, err := b.nextScheduledProblem(user); err == nil {
 		return p, err

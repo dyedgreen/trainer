@@ -38,17 +38,24 @@ var templ = template.Must(template.ParseFiles(
 // Types
 
 type Session struct {
+	// Hold a session with
+	// expiry time and user
+	// id
 	Expires time.Time
-	User    string
+	Username string
+	UserId    int64
 }
 
 type Auth struct {
+	// Authentication provider
+	// implementation
 	sessions map[string]Session
 	db       *sql.DB
 }
 
 // Functions
 
+// Create a new auth object
 func New(db *sql.DB) *Auth {
 	var a Auth
 	a.db = db
@@ -61,6 +68,7 @@ func New(db *sql.DB) *Auth {
 
 // User management
 
+// Add a new user
 func (a *Auth) AddUser(user, pass string) error {
 	if user == "" || pass == "" {
 		return ErrNoUserPass
@@ -73,10 +81,11 @@ func (a *Auth) AddUser(user, pass string) error {
 	return a.userInsert(user, hash, salt)
 }
 
+// Change a users password
 func (a *Auth) UpdateUser(user, pass, newPass string) error {
 	if user == "" || pass == "" || newPass == "" {
 		return ErrNoUserPass
-	} else if exists, hash, salt := a.userGet(user); !exists {
+	} else if exists, _, hash, salt := a.userGet(user); !exists {
 		return ErrUserNotExists
 	} else if hashPassword(salt, pass) != hash {
 		return ErrPassword
@@ -88,14 +97,15 @@ func (a *Auth) UpdateUser(user, pass, newPass string) error {
 	return a.userUpdate(user, hash, salt)
 }
 
+// Create a session for a user
 func (a *Auth) Login(user, pass string) (sess string, err error) {
-	if exists, hash, salt := a.userGet(user); !exists {
+	if exists, userId, hash, salt := a.userGet(user); !exists {
 		err = ErrUserNotExists
 	} else if hashPassword(salt, pass) != hash {
 		err = ErrPassword
 	} else {
 		sess = randomString(SessionStrLength)
-		a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user}
+		a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user, userId}
 		go func() {
 			// Remove expired sessions
 			time.Sleep(SessionTimeout)
@@ -105,13 +115,18 @@ func (a *Auth) Login(user, pass string) (sess string, err error) {
 	return
 }
 
+func (a *Auth) GetSession(sess string) (Session, bool) {
+	if s := a.sessions[sess]; time.Now().Before(s.Expires) {
+		return s, true
+	}
+	return Session{}, false
+}
+
 // Server Auth interface implementation
 
-func (a *Auth) IsValid(sess string) (string, bool) {
-	if s := a.sessions[sess]; time.Now().Before(s.Expires) {
-		return s.User, true
-	}
-	return "", false
+func (a *Auth) IsValid(sess string) (int64, bool) {
+	s, valid := a.GetSession(sess)
+	return s.UserId, valid
 }
 
 func (a *Auth) Paths() []string {
@@ -179,15 +194,15 @@ func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
 func (a *Auth) handleAccount(w http.ResponseWriter, r *http.Request) {
 	var message, success string
 	pass, newPass := r.PostFormValue("old_pass"), r.PostFormValue("new_pass")
-	var user string
+	var sess Session
 	for _, c := range r.Cookies() {
 		if c.Name == "auth" {
-			user, _ = a.IsValid(c.Value)
+			sess, _ = a.GetSession(c.Value)
 			break
 		}
 	}
 	if pass != "" {
-		err := a.UpdateUser(user, pass, newPass)
+		err := a.UpdateUser(sess.Username, pass, newPass)
 		if err != nil {
 			message = err.Error()
 		} else {
@@ -198,5 +213,5 @@ func (a *Auth) handleAccount(w http.ResponseWriter, r *http.Request) {
 		Error    string
 		Success  string
 		Username string
-	}{message, success, user})
+	}{message, success, sess.Username})
 }
