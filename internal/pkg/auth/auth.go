@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,15 +42,16 @@ type Session struct {
 	// Hold a session with
 	// expiry time and user
 	// id
-	Expires time.Time
+	Expires  time.Time
 	Username string
-	UserId    int64
+	UserId   int64
 }
 
 type Auth struct {
 	// Authentication provider
 	// implementation
 	sessions map[string]Session
+	mutex    sync.RWMutex
 	db       *sql.DB
 }
 
@@ -105,10 +107,14 @@ func (a *Auth) Login(user, pass string) (sess string, err error) {
 		err = ErrPassword
 	} else {
 		sess = randomString(SessionStrLength)
+		a.mutex.Lock()
+		defer a.mutex.Unlock()
 		a.sessions[sess] = Session{time.Now().Add(SessionTimeout), user, userId}
 		go func() {
 			// Remove expired sessions
 			time.Sleep(SessionTimeout)
+			a.mutex.Lock()
+			defer a.mutex.Unlock()
 			delete(a.sessions, sess)
 		}()
 	}
@@ -116,6 +122,8 @@ func (a *Auth) Login(user, pass string) (sess string, err error) {
 }
 
 func (a *Auth) GetSession(sess string) (Session, bool) {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
 	if s := a.sessions[sess]; time.Now().Before(s.Expires) {
 		return s, true
 	}
@@ -158,6 +166,8 @@ func (a *Auth) handleLogin(w http.ResponseWriter, r *http.Request) {
 			var cookie http.Cookie
 			cookie.Name = "auth"
 			cookie.Value = sess
+			a.mutex.RLock()
+			defer a.mutex.RUnlock()
 			cookie.Expires = a.sessions[sess].Expires
 			http.SetCookie(w, &cookie)
 			r.URL.Path = a.Protect()[0]
