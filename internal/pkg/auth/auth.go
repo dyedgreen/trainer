@@ -138,7 +138,7 @@ func (a *Auth) IsValid(sess string) (int64, bool) {
 }
 
 func (a *Auth) Paths() []string {
-	return []string{"/login", "/register", "/account"}
+	return []string{"/login", "/register", "/account", "/logout"}
 }
 
 func (a *Auth) Protect() []string {
@@ -150,6 +150,7 @@ func (a *Auth) Handler() http.Handler {
 	mux.HandleFunc("/login", a.handleLogin)
 	mux.HandleFunc("/register", a.handleRegister)
 	mux.HandleFunc("/account", a.handleAccount)
+	mux.HandleFunc("/logout", a.handleLogout)
 	return mux
 }
 
@@ -224,4 +225,14 @@ func (a *Auth) handleAccount(w http.ResponseWriter, r *http.Request) {
 		Success  string
 		Username string
 	}{message, success, sess.Username})
+}
+
+func (a *Auth) handleLogout(w http.ResponseWriter, r *http.Request) {
+	var cookie http.Cookie
+	cookie.Name = "auth"
+	cookie.Value = ""
+	cookie.Expires = time.Now()
+	http.SetCookie(w, &cookie)
+	r.URL.Path = "/"
+	http.Redirect(w, r, r.URL.String(), http.StatusFound)
 }
