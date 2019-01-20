@@ -29,12 +29,14 @@ var (
 const (
 	SessionTimeout   = 24 * time.Hour
 	SessionStrLength = 256
+	TicketKeyLength  = 16
 )
 
 var templ = template.Must(template.ParseFiles(
 	"web/template/login.html",
 	"web/template/account.html",
-	"web/template/register.html"))
+	"web/template/register.html",
+	"web/template/tickets.html"))
 
 // Types
 
@@ -71,11 +73,16 @@ func New(db *sql.DB) *Auth {
 // User management
 
 // Add a new user
-func (a *Auth) AddUser(user, pass string) error {
+func (a *Auth) AddUser(user, ticket, pass string) error {
 	if user == "" || pass == "" {
 		return ErrNoUserPass
 	} else if a.userExists(user) {
 		return ErrUserExists
+	} else if err := a.ticketUse(ticket); err != nil {
+		// The first person to register is admin
+		if count, errCount := a.userCount(); errCount != nil || count > 0 {
+			return err
+		}
 	}
 	var hash, salt string
 	salt = randomString(64)
@@ -138,11 +145,11 @@ func (a *Auth) IsValid(sess string) (int64, bool) {
 }
 
 func (a *Auth) Paths() []string {
-	return []string{"/login", "/register", "/account", "/logout"}
+	return []string{"/login", "/register", "/account", "/logout", "/tickets"}
 }
 
 func (a *Auth) Protect() []string {
-	return []string{"/app/", "/api/problem/", "/account"}
+	return []string{"/app/", "/api/problem/", "/account", "/tickets"}
 }
 
 func (a *Auth) Handler() http.Handler {
@@ -151,6 +158,7 @@ func (a *Auth) Handler() http.Handler {
 	mux.HandleFunc("/register", a.handleRegister)
 	mux.HandleFunc("/account", a.handleAccount)
 	mux.HandleFunc("/logout", a.handleLogout)
+	mux.HandleFunc("/tickets", a.handleTickets)
 	return mux
 }
 
@@ -184,10 +192,10 @@ func (a *Auth) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
 	var message string
-	user, pass := r.PostFormValue("username"), r.PostFormValue("password")
+	user, ticket, pass := r.PostFormValue("username"), r.PostFormValue("ticket"), r.PostFormValue("password")
 	user = strings.Trim(user, " ")
 	if user != "" {
-		err := a.AddUser(user, pass)
+		err := a.AddUser(user, ticket, pass)
 		if err != nil {
 			message = err.Error()
 		} else {
@@ -199,7 +207,8 @@ func (a *Auth) handleRegister(w http.ResponseWriter, r *http.Request) {
 	templ.ExecuteTemplate(w, "register.html", struct {
 		Error    string
 		Username string
-	}{message, user})
+		Ticket   string
+	}{message, user, ticket})
 }
 
 func (a *Auth) handleAccount(w http.ResponseWriter, r *http.Request) {
@@ -235,4 +244,38 @@ func (a *Auth) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &cookie)
 	r.URL.Path = "/"
 	http.Redirect(w, r, r.URL.String(), http.StatusFound)
+}
+
+func (a *Auth) handleTickets(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var sess Session
+	for _, c := range r.Cookies() {
+		if c.Name == "auth" {
+			sess, _ = a.GetSession(c.Value)
+			break
+		}
+	}
+	if sess.UserId != 1 {
+		// Only the first user is an admin
+		templ.ExecuteTemplate(w, "tickets.html", struct {
+			Error   string
+			Tickets []string
+		}{"Forbidden", nil})
+		return
+	}
+	if r.PostFormValue("new") == "yes" {
+		err = a.ticketInsert(randomString(TicketKeyLength))
+	}
+	var tickets []string
+	var message string
+	if err == nil {
+		tickets, err = a.ticketList()
+	}
+	if err != nil {
+		message = err.Error()
+	}
+	templ.ExecuteTemplate(w, "tickets.html", struct {
+		Error   string
+		Tickets []string
+	}{message, tickets})
 }

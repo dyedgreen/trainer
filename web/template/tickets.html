@@ -8,19 +8,19 @@
     <link href="/css/form.css" type="text/css" rel="stylesheet">
     <link href="/lib/fontello/fontello.css" rel="stylesheet">
 
-    <title>Register</title>
+    <title>Open Tickets</title>
   </head>
 
   <body>
-    <form id="form" action="/register" method="post">
-      <h1>Register</h1>
+    <form id="form" action="/tickets" method="post">
+      <h1>Open Tickets</h1>
       {{ if .Error }}<h2 class="icon-warning">{{.Error}}</h2>{{ end }}
-      <input name="username" type="text" placeholder="Username" value="{{.Username}}">
-      <input name="ticket" type="text" placeholder="Ticket Code" value="{{.Ticket}}">
-      <input name="password" type="password" placeholder="Password">
+      {{ range .Tickets }}
+      <p class="font-mono">{{ . }}</p>
+      {{ end }}
+      <input name="new" type="text" value="yes" style="opacity: 0; height: 0; margin: 0;">
       <input type="submit" style="opacity: 0; height: 0; margin: 0;">
-      <a id="button" class="button">Register</a>
-      <a class="button" href="/login">Login</a>
+      <a id="button" class="button">Add Ticket</a>
       <script>document.getElementById("button").onclick = () => {document.getElementById("form").submit()}</script>
     </form>
   </body>
