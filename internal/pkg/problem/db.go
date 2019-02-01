@@ -79,6 +79,15 @@ func (b *Box) updateProblem(p Problem) error {
 	return nil
 }
 
+func (b *Box) getProblem(id int64) (p Problem, err error) {
+	query := `
+	SELECT id, title, question, solution FROM problems WHERE id = ?;
+	`
+	row := b.db.QueryRow(query, id)
+	err = row.Scan(&p.Id, &p.Title, &p.Question, &p.Solution)
+	return
+}
+
 func (b *Box) storeSession(s Session) (err error) {
 	if s.Time < 1 || s.Code == "" {
 		err = ErrEmpty

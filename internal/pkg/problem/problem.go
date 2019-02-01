@@ -97,3 +97,12 @@ func (b *Box) ProblemNext(r *http.Request, user int64) (interface{}, error) {
 		return false, nil
 	}
 }
+
+func (b *Box) ProblemGet(r *http.Request, user int64) (interface{}, error) {
+	// Get problem by id
+	if id, err := strconv.ParseInt(r.FormValue("id"), 10, 64); err != nil {
+		return nil, err
+	} else {
+		return b.getProblem(id)
+	}
+}

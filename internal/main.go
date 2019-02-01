@@ -5,6 +5,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"trainer/internal/pkg/auth"
+	"trainer/internal/pkg/draft"
 	"trainer/internal/pkg/problem"
 	"trainer/internal/pkg/server"
 )
@@ -18,7 +19,7 @@ func main() {
 	}
 	defer db.Close()
 
-	a := auth.New(db, []string{"/app/", "/api/problem/"})
+	a := auth.New(db, []string{"/app/", "/api/problem/", "/api/draft/"})
 	s.RegisterAuth(a)
 
 	// Register api routes
@@ -26,6 +27,11 @@ func main() {
 	s.RegisterApiFunc("/problem/update", box.ProblemUpdate)
 	s.RegisterApiFunc("/problem/submit", box.ProblemSubmit)
 	s.RegisterApiFunc("/problem/next", box.ProblemNext)
+	s.RegisterApiFunc("/problem/get", box.ProblemGet)
+
+	pad := draft.NewScratchPad(db)
+	s.RegisterApiFunc("/draft/update", pad.DraftUpdate)
+	s.RegisterApiFunc("/draft/get", pad.DraftGet)
 
 	log.Fatal(s.ListenAndServe())
 }
