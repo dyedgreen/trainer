@@ -50,6 +50,10 @@ func (s *ScratchPad) DraftUpdate(r *http.Request, user int64) (interface{}, erro
 	return nil, s.updateDraft(user, draft)
 }
 
+func (s *ScratchPad) DraftDelete(r *http.Request, user int64) (interface{}, error) {
+	return nil, s.deleteDraft(user);
+}
+
 func (s *ScratchPad) DraftGet(r *http.Request, user int64) (interface{}, error) {
 	if draft, err := s.getDraft(user); err == nil {
 		return draft, nil

@@ -77,7 +77,6 @@ function toggle(paused) {
 }
 ui.timer.ontoggle = toggle;
 
-
 function run() {
   // Executes the current editor code
   ui.console.clear();
@@ -89,6 +88,11 @@ function run() {
     // Timeout after 30 seconds
     worker.terminate();
   }, 30000);
+  // Running the code is a good
+  // proxy for significant changes
+  setTimeout(() => {
+    saveDraft();
+  }, 10);
 }
 ui.buttons.run.onclick = run;
 
@@ -110,37 +114,77 @@ function save() {
 }
 ui.problem.onsave = save;
 
-function submit(correct) {
-  // Submit the session
-  apiPost("/problem/submit", {
-    id: problemId,
+function newProblem() {
+  // Create a new problem
+  ui.problem.setTitle("Hello World");
+  ui.problem.setQuestion("Write a new problem here...");
+  ui.problem.setSolution("Write the solution here...");
+  problemId = -1;
+  ui.timer.reset();
+  ui.editor.setValue("");
+  ui.editor.clearHistory();
+  showModal(
+    "New Problem",
+    "Please find a new problem and try to solve it!",
+    "Done",
+    () => {}
+  );
+}
+ui.problem.onnew = newProblem;
+
+function saveDraft() {
+  // Submit a new draft
+  if (ui.editor.getValue().length == 0) return;
+  apiPost("/draft/update", {
+    problem: problemId,
     code: ui.editor.getValue(),
     time: ui.timer.elapsed,
-    solved: correct ? "1" : "0",
   }, res => {
     if (res.error) {
       showError(res.error);
+    }
+  });
+}
+
+function submit(correct) {
+  // Submit the session and delete
+  // current draft
+  apiPost("/draft/delete", {}, res => {
+    if (res.error) {
+      showError(res.error);
     } else {
-      showModal(
-        "Session Recorded",
-        correct ? "Great work today, see you tomorrow!" : "Practice makes perfect, try again tomorrow!",
-        "Attempt Next Problem",
-        () => window.location.href = "/app"
-      );
+      apiPost("/problem/submit", {
+        id: problemId,
+        code: ui.editor.getValue(),
+        time: ui.timer.elapsed,
+        solved: correct ? "1" : "0",
+      }, res => {
+        if (res.error) {
+          showError(res.error);
+        } else {
+          showModal(
+            "Session Recorded",
+            correct ? "Great work today, see you tomorrow!" : "Practice makes perfect, try again tomorrow!",
+            "Attempt Next Problem",
+            () => window.location.href = "/app"
+          );
+        }
+      });
     }
   });
 }
 ui.buttons.correct.onclick = () => submit(true);
 ui.buttons.wrong.onclick = () => submit(false);
 
-function loadProblem() {
-  apiPost("/problem/next", {}, res => {
+function loadProblem(id) {
+  // Loads a problem
+  apiPost(id ? "/problem/get" : "/problem/next", id ? {id} : {}, res => {
     if (res.error) {
       showModal(
         "Could Not Load Problem",
         res.error,
         "Try Again",
-        loadProblem
+        () => { loadProblem(id) }
       );
     } else if (res.value) {
       // A new problem is already scheduled
@@ -159,9 +203,25 @@ function loadProblem() {
   });
 }
 
+function initApp() {
+  // Load draft or new
+  // problem
+  apiPost("/draft/get", {}, res => {
+    if (res.error) {
+      loadProblem();
+    } else {
+      ui.timer.elapsed = +res.value.time;
+      ui.timer.paint();
+      ui.editor.setValue("".concat(res.value.code));
+      ui.editor.clearHistory();
+      loadProblem(res.value.problem);
+    }
+  });
+}
+
 
 // Load problem from server
 
 let problemId = -1; // Is initialized by server, -1 <=> this will be a new problem
 
-loadProblem();
+initApp();

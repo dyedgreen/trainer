@@ -97,6 +97,10 @@ class TimerWidget extends HTMLElement {
     this.timeout = setTimeout(() => {this.tick()}, 1000);
   }
 
+  paint() {
+    this.display.innerHTML = this.displayTime;
+  }
+
   reset() {
     this.elapsed = 0;
     this.display.innerHTML = this.displayTime;
@@ -125,17 +129,19 @@ class ProblemWidget extends HTMLElement {
   constructor() {
     super();
     // State
-    this.innerHTML = '<h1></h1><p></p><h2 class="hidden">Solution</h2><p class="hidden"></p><a class="button icon-done">Show Solution</a><a class="button icon-edit">Edit</a>';
+    this.innerHTML = '<h1></h1><p></p><h2 class="hidden">Solution</h2><p class="hidden"></p><a class="button icon-done">Show Solution</a><a class="button icon-edit">Edit</a><a class="button icon-new">New</a>';
     this.titleElem = this.childNodes[0];
     this.questionElem = this.childNodes[1];
     this.solutionHead = this.childNodes[2];
     this.solutionElem = this.childNodes[3];
     this.buttonDone = this.childNodes[4];
     this.buttonEdit = this.childNodes[5];
+    this.buttonNew = this.childNodes[6];
     this.edit = false;
     // Actions
     this.buttonDone.onclick = () => {this.setDone()}
     this.buttonEdit.onclick = () => {this.toggleEdit()};
+    this.buttonNew.onclick = () => {this.onnew()};
     // Initial draw
     this.titleElem.innerHTML = this.hasAttribute("title") ? this.getAttribute("title") : "";
     this.questionElem.innerHTML = this.hasAttribute("question") ? this.getAttribute("question") : "";
@@ -197,6 +203,8 @@ class ProblemWidget extends HTMLElement {
     this.solutionHead.classList.remove("hidden");
     this.solutionElem.classList.remove("hidden");
     this.buttonDone.classList.add("hidden");
+    this.buttonNew.classList.add("hidden");
+    this.buttonReset.classList.add("hidden");
     this.ondone();
   }
 
@@ -205,6 +213,10 @@ class ProblemWidget extends HTMLElement {
   }
 
   ondone() {
+    // Overwrite this function to register a handler
+  }
+
+  onnew() {
     // Overwrite this function to register a handler
   }
 }

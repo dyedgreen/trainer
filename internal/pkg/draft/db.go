@@ -33,6 +33,14 @@ func (s *ScratchPad) updateDraft(user int64, draft Draft) (err error) {
 	return
 }
 
+func (s *ScratchPad) deleteDraft(user int64) (err error) {
+	query := `
+	DELETE FROM drafts WHERE user = ?;
+	`
+	_, err = s.db.Exec(query, user)
+	return
+}
+
 func (s *ScratchPad) getDraft(user int64) (d Draft, err error) {
 	query := `
 	SELECT problem, code, time FROM drafts WHERE user = ?;

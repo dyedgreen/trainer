@@ -31,6 +31,7 @@ func main() {
 
 	pad := draft.NewScratchPad(db)
 	s.RegisterApiFunc("/draft/update", pad.DraftUpdate)
+	s.RegisterApiFunc("/draft/delete", pad.DraftDelete)
 	s.RegisterApiFunc("/draft/get", pad.DraftGet)
 
 	log.Fatal(s.ListenAndServe())
