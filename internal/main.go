@@ -18,9 +18,10 @@ func main() {
 	}
 	defer db.Close()
 
-	a := auth.New(db)
+	a := auth.New(db, []string{"/app/", "/api/problem/"})
 	s.RegisterAuth(a)
 
+	// Register api routes
 	box := problem.NewBox(db)
 	s.RegisterApiFunc("/problem/update", box.ProblemUpdate)
 	s.RegisterApiFunc("/problem/submit", box.ProblemSubmit)

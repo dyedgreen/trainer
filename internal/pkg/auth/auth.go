@@ -55,18 +55,20 @@ type Auth struct {
 	sessions map[string]Session
 	mutex    sync.RWMutex
 	db       *sql.DB
+	protect []string
 }
 
 // Functions
 
 // Create a new auth object
-func New(db *sql.DB) *Auth {
+func New(db *sql.DB, protect []string) *Auth {
 	var a Auth
 	a.db = db
 	a.sessions = make(map[string]Session)
 	if err := initDb(a.db); err != nil {
 		panic(err.Error())
 	}
+	a.protect = append(protect, "/account", "/tickets")
 	return &a
 }
 
@@ -149,7 +151,7 @@ func (a *Auth) Paths() []string {
 }
 
 func (a *Auth) Protect() []string {
-	return []string{"/app/", "/api/problem/", "/account", "/tickets"}
+	return a.protect
 }
 
 func (a *Auth) Handler() http.Handler {
