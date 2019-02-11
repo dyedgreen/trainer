@@ -204,7 +204,6 @@ class ProblemWidget extends HTMLElement {
     this.solutionElem.classList.remove("hidden");
     this.buttonDone.classList.add("hidden");
     this.buttonNew.classList.add("hidden");
-    this.buttonReset.classList.add("hidden");
     this.ondone();
   }
 
